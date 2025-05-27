@@ -1,16 +1,20 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"sync/atomic"
 	"unicode/utf8"
+
+	"github.com/portbound/bootdev-httpserver/internal/database"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	dbQueries      *database.Queries
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -43,6 +47,30 @@ func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	cfg.fileserverHits.Store(0)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Hits reset to 0"))
+}
+
+func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
+	type request struct {
+		Email string `json:"email"`
+	}
+
+	req := &request{}
+	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+		RespondWithError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	user, err := cfg.dbQueries.CreateUser(r.Context(), sql.NullString{
+		String: req.Email,
+		Valid:  req.Email != "",
+	})
+
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, "failed to create user")
+		return
+	}
+
+	RespondWithJSON(w, http.StatusOK, user)
 }
 
 func handlerValidation(w http.ResponseWriter, r *http.Request) {
