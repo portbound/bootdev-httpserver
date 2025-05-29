@@ -22,7 +22,10 @@ func main() {
 	mux.HandleFunc("POST /admin/reset", cfg.HandlerReset)
 
 	mux.HandleFunc("GET /api/healthz", cfg.HandlerReadiness)
-	mux.HandleFunc("POST /api/validate_chirp", handlers.ValidateChirp)
+	// 	mux.HandleFunc("POST /api/validate_chirp", handlers.ValidateChirp)
+	mux.HandleFunc("POST /api/chirps", func(w http.ResponseWriter, r *http.Request) {
+		handlers.CreateChirp(w, r, cfg)
+	})
 	mux.HandleFunc("POST /api/users", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CreateUser(w, r, cfg)
 	})

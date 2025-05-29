@@ -1,65 +1,64 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/google/uuid"
+	"github.com/portbound/bootdev-httpserver/api"
+	"github.com/portbound/bootdev-httpserver/internal/database"
 )
 
-func ValidateChirp(w http.ResponseWriter, r *http.Request) {
-	type requestBody struct {
-		Body string `json:"body"`
-	}
-	type responseBody struct {
-		Valid bool   `json:"valid"`
-		Body  string `json:"body"`
-		Error string `json:"error,omitempty"`
-	}
-
-	req := requestBody{}
-	res := responseBody{
-		Valid: true,
-		Body:  req.Body,
-		Error: "",
-	}
-	decoder := json.NewDecoder(r.Body)
-
-	code := http.StatusOK
-
-	err := decoder.Decode(&req)
-	if err != nil {
-		code = http.StatusBadRequest
-		res.Valid = false
-		res.Error = "Something went wrong"
-	}
-
-	if utf8.RuneCountInString(req.Body) > 140 {
-		code = http.StatusBadRequest
-		res.Valid = false
-		res.Error = "Chirp is too long"
-	}
-
-	res.Body = cleanChirp(req.Body)
-
-	dat, err := json.Marshal(res)
-	if err != nil {
-		code = http.StatusBadRequest
-		res.Valid = false
-		res.Error = "Something went wrong"
-	}
-
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write([]byte(dat))
+type Chirp struct {
+	Body   string `json:"body"`
+	UserId string `json:"user_id"`
 }
 
-func cleanChirp(s string) string {
-	s = strings.ToLower(s)
+func CreateChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
+	chirp := &Chirp{}
+	if err := json.NewDecoder(r.Body).Decode(chirp); err != nil {
+		api.RespondWithError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
 
+	err := chirp.validate()
+	if err != nil {
+		api.RespondWithError(w, http.StatusBadRequest, "Something went wrong")
+		return
+	}
+
+	chirp.clean()
+
+	params := database.CreateChirpParams{
+		Body:   sql.NullString{String: chirp.Body, Valid: chirp.Body != ""},
+		UserID: uuid.MustParse(chirp.UserId),
+	}
+
+	createdChirp, err := cfg.DbQueries.CreateChirp(r.Context(), params)
+	if err != nil {
+		api.RespondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create Chirp: %s", err))
+		return
+	}
+
+	api.RespondWithJSON(w, http.StatusOK, "application/json", createdChirp)
+}
+
+func (c *Chirp) validate() error {
+	if utf8.RuneCountInString(c.Body) > 140 {
+		return errors.New("Invalid Chirp Length")
+	}
+	return nil
+}
+
+func (c *Chirp) clean() {
+	s := strings.ToLower(c.Body)
 	s = strings.ReplaceAll(s, "kerfuffle", "****")
 	s = strings.ReplaceAll(s, "sharbert", "****")
 	s = strings.ReplaceAll(s, "fornax", "****")
-
-	return s
+	c.Body = s
 }
