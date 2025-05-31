@@ -29,5 +29,5 @@ func CreateUser(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		return
 	}
 
-	api.RespondWithJSON(w, http.StatusOK, "application/json", user)
+	api.RespondWithJSON(w, http.StatusCreated, "application/json", user)
 }

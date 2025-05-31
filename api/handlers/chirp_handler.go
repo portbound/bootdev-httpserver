@@ -48,6 +48,23 @@ func CreateChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 	api.RespondWithJSON(w, http.StatusOK, "application/json", createdChirp)
 }
 
+func GetAllChirps(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
+	chirps, err := cfg.DbQueries.GetAllChirps(r.Context())
+	if err != nil {
+		api.RespondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to fetch chirps: %s", err))
+		return
+	}
+	api.RespondWithJSON(w, http.StatusOK, "application/json", chirps)
+}
+
+func GetChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config, id uuid.UUID) {
+	chirp, err := cfg.DbQueries.GetChirp(r.Context(), id)
+	if err != nil {
+		api.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Chirp not found: %s", err))
+	}
+	api.RespondWithJSON(w, http.StatusOK, "application/json", chirp)
+}
+
 func (c *Chirp) validate() error {
 	if utf8.RuneCountInString(c.Body) > 140 {
 		return errors.New("Invalid Chirp Length")
