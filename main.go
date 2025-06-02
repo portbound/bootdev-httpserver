@@ -39,6 +39,9 @@ func main() {
 	mux.HandleFunc("POST /api/users", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CreateUser(w, r, cfg)
 	})
+	mux.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
+		handlers.Login(w, r, cfg)
+	})
 
 	server := &http.Server{Addr: ":8080", Handler: mux}
 	server.ListenAndServe()
