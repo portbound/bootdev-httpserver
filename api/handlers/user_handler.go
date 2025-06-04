@@ -17,6 +17,7 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 	type request struct {
 		Password string `json:"password"`
 		Email    string `json:"email"`
+		ExpInSec int    `json:"expires_in_seconds`
 	}
 	type response struct {
 		ID             uuid.UUID `json:"id"`
@@ -31,6 +32,10 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		api.RespondWithError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+
+	// 	if req.ExpInSec == 0 || req.ExpInSec > 3600 {
+	// 		req.ExpInSec = 3600
+	// 	}
 
 	user, err := cfg.DbQueries.GetUser(r.Context(), sql.NullString{
 		String: req.Email,

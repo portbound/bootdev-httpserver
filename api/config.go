@@ -14,6 +14,7 @@ import (
 type Config struct {
 	FileserverHits atomic.Int32
 	DbQueries      *database.Queries
+	JWT            string
 }
 
 func NewConfig() (*Config, error) {

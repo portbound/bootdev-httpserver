@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -16,6 +17,8 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+
+	cfg.JWT = os.Getenv("JWT")
 
 	mux := http.NewServeMux()
 	mux.Handle("/app/", http.StripPrefix("/app/", cfg.MiddlewareMetricsInc(http.FileServer(http.Dir(".")))))
