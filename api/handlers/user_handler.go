@@ -17,7 +17,7 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 	type request struct {
 		Password string `json:"password"`
 		Email    string `json:"email"`
-		ExpInSec int    `json:"expires_in_seconds`
+		ExpInSec int    `json:"expires_in_seconds"`
 	}
 	type response struct {
 		ID             uuid.UUID `json:"id"`
@@ -25,6 +25,7 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		UpdatedAt      time.Time `json:"updated_at"`
 		Email          string    `json:"email"`
 		HashedPassword string    `json:"-"`
+		Token          string    `json:"token"`
 	}
 
 	req := &request{}
@@ -33,9 +34,9 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		return
 	}
 
-	// 	if req.ExpInSec == 0 || req.ExpInSec > 3600 {
-	// 		req.ExpInSec = 3600
-	// 	}
+	if req.ExpInSec == 0 || req.ExpInSec > 3600 {
+		req.ExpInSec = 3600
+	}
 
 	user, err := cfg.DbQueries.GetUser(r.Context(), sql.NullString{
 		String: req.Email,
@@ -51,11 +52,18 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		return
 	}
 
+	token, err := auth.MakeJWT(user.ID, cfg.JWT, time.Duration(req.ExpInSec)*time.Second)
+	if err != nil {
+		api.RespondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Something went wrong: %s", err))
+		return
+	}
+
 	resp := response{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt.Time,
 		UpdatedAt: user.UpdatedAt.Time,
 		Email:     user.Email.String,
+		Token:     token,
 	}
 	api.RespondWithJSON(w, http.StatusOK, "application/json", resp)
 }

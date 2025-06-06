@@ -35,7 +35,6 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expiresIn)),
 		Subject:   userID.String(),
 	})
-
 	return tok.SignedString([]byte(tokenSecret))
 }
 
@@ -56,9 +55,9 @@ func ValidateJWT(tokenString string, tokenSecret string) (uuid.UUID, error) {
 }
 
 func GetBearerToken(headers http.Header) (string, error) {
-	tok := headers.Get("AUTHORIZATION")
+	tok := headers.Get("Authorization")
 	if tok != "" {
-		return strings.Trim(tok, "Bearer "), nil
+		return strings.TrimPrefix(tok, "Bearer "), nil
 	}
 	return "", errors.New("No Auth header found")
 }

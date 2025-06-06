@@ -11,22 +11,34 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/portbound/bootdev-httpserver/api"
+	"github.com/portbound/bootdev-httpserver/internal/auth"
 	"github.com/portbound/bootdev-httpserver/internal/database"
 )
 
 type Chirp struct {
-	Body   string `json:"body"`
-	UserId string `json:"user_id"`
+	Body string `json:"body"`
 }
 
 func CreateChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		api.RespondWithError(w, http.StatusBadRequest, fmt.Sprintf("Unable to parse auth: %s", err))
+		return
+	}
+
+	validUserID, err := auth.ValidateJWT(token, cfg.JWT)
+	if err != nil {
+		api.RespondWithError(w, http.StatusBadRequest, fmt.Sprintf("Unable to validate token: %s", err))
+		return
+	}
+
 	chirp := &Chirp{}
 	if err := json.NewDecoder(r.Body).Decode(chirp); err != nil {
 		api.RespondWithError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	err := chirp.validate()
+	err = chirp.validate()
 	if err != nil {
 		api.RespondWithError(w, http.StatusBadRequest, "Something went wrong")
 		return
@@ -36,7 +48,7 @@ func CreateChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 
 	params := database.CreateChirpParams{
 		Body:   sql.NullString{String: chirp.Body, Valid: chirp.Body != ""},
-		UserID: uuid.MustParse(chirp.UserId),
+		UserID: validUserID,
 	}
 
 	createdChirp, err := cfg.DbQueries.CreateChirp(r.Context(), params)
@@ -45,7 +57,7 @@ func CreateChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		return
 	}
 
-	api.RespondWithJSON(w, http.StatusOK, "application/json", createdChirp)
+	api.RespondWithJSON(w, http.StatusCreated, "application/json", createdChirp)
 }
 
 func GetAllChirps(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
