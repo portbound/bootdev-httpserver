@@ -17,7 +17,6 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 	type request struct {
 		Password string `json:"password"`
 		Email    string `json:"email"`
-		ExpInSec int    `json:"expires_in_seconds"`
 	}
 	type response struct {
 		ID             uuid.UUID `json:"id"`
@@ -26,16 +25,13 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		Email          string    `json:"email"`
 		HashedPassword string    `json:"-"`
 		Token          string    `json:"token"`
+		RefreshToken   string    `json:"refresh_token"`
 	}
 
 	req := &request{}
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 		api.RespondWithError(w, http.StatusBadRequest, "invalid request body")
 		return
-	}
-
-	if req.ExpInSec == 0 || req.ExpInSec > 3600 {
-		req.ExpInSec = 3600
 	}
 
 	user, err := cfg.DbQueries.GetUser(r.Context(), sql.NullString{
@@ -52,18 +48,30 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		return
 	}
 
-	token, err := auth.MakeJWT(user.ID, cfg.JWT, time.Duration(req.ExpInSec)*time.Second)
+	jwt, err := auth.MakeJWT(user.ID, cfg.JWT)
 	if err != nil {
 		api.RespondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Something went wrong: %s", err))
 		return
 	}
 
+	tok := auth.MakeRefreshToken()
+
+	params := database.CreateRefreshTokenParams{
+		Token:  tok,
+		UserID: user.ID,
+	}
+	refreshToken, err := cfg.DbQueries.CreateRefreshToken(r.Context(), params)
+	if err != nil {
+		api.RespondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Something went wrong: %s", err))
+	}
+
 	resp := response{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt.Time,
-		UpdatedAt: user.UpdatedAt.Time,
-		Email:     user.Email.String,
-		Token:     token,
+		ID:           user.ID,
+		CreatedAt:    user.CreatedAt.Time,
+		UpdatedAt:    user.UpdatedAt.Time,
+		Email:        user.Email.String,
+		Token:        jwt,
+		RefreshToken: refreshToken.Token,
 	}
 	api.RespondWithJSON(w, http.StatusOK, "application/json", resp)
 }
