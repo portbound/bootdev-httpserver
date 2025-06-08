@@ -28,7 +28,7 @@ func CreateChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 
 	validUserID, err := auth.ValidateJWT(token, cfg.JWT)
 	if err != nil {
-		api.RespondWithError(w, http.StatusBadRequest, fmt.Sprintf("Unable to validate token: %s", err))
+		api.RespondWithError(w, http.StatusUnauthorized, fmt.Sprintf("Unable to validate token: %s", err))
 		return
 	}
 

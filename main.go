@@ -24,8 +24,8 @@ func main() {
 	mux.Handle("/app/", http.StripPrefix("/app/", cfg.MiddlewareMetricsInc(http.FileServer(http.Dir(".")))))
 	mux.HandleFunc("GET /admin/metrics", cfg.HandlerMetrics)
 	mux.HandleFunc("POST /admin/reset", cfg.HandlerReset)
-
 	mux.HandleFunc("GET /api/healthz", cfg.HandlerReadiness)
+
 	mux.HandleFunc("POST /api/chirps", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CreateChirp(w, r, cfg)
 	})
@@ -45,7 +45,12 @@ func main() {
 	mux.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
 		handlers.Login(w, r, cfg)
 	})
-
+	mux.HandleFunc("POST /api/refresh", func(w http.ResponseWriter, r *http.Request) {
+		handlers.RefreshAccessToken(w, r, cfg)
+	})
+	mux.HandleFunc("POST /api/revoke", func(w http.ResponseWriter, r *http.Request) {
+		handlers.RevokeRefreshToken(w, r, cfg)
+	})
 	server := &http.Server{Addr: ":8080", Handler: mux}
 	server.ListenAndServe()
 }

@@ -13,6 +13,52 @@ import (
 	"github.com/portbound/bootdev-httpserver/internal/database"
 )
 
+func RefreshAccessToken(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
+	type response struct {
+		Token string `json:"token"`
+	}
+
+	tok, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		api.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	refTok, err := cfg.DbQueries.GetRefreshToken(r.Context(), tok)
+	if err != nil {
+		api.RespondWithError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	if refTok.RevokedAt.Valid {
+		api.RespondWithError(w, http.StatusUnauthorized, fmt.Sprintf("Refresh token has been revoked"))
+		return
+	}
+
+	jwt, err := auth.MakeJWT(refTok.UserID, cfg.JWT)
+	if err != nil {
+		api.RespondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Something went wrong: %s", err))
+		return
+	}
+
+	resp := response{
+		Token: jwt,
+	}
+	api.RespondWithJSON(w, http.StatusOK, "application/json", resp)
+}
+
+func RevokeRefreshToken(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
+	tok, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		api.RespondWithError(w, http.StatusBadRequest, err.Error())
+	}
+
+	if err := cfg.DbQueries.RevokeRefreshToken(r.Context(), tok); err != nil {
+		api.RespondWithError(w, http.StatusBadRequest, err.Error())
+	}
+	api.RespondWithJSON(w, http.StatusNoContent, "application/json", nil)
+}
+
 func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 	type request struct {
 		Password string `json:"password"`
