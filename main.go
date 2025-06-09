@@ -42,6 +42,9 @@ func main() {
 	mux.HandleFunc("POST /api/users", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CreateUser(w, r, cfg)
 	})
+	mux.HandleFunc("PUT /api/users", func(w http.ResponseWriter, r *http.Request) {
+		handlers.UpdateUser(w, r, cfg)
+	})
 	mux.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
 		handlers.Login(w, r, cfg)
 	})

@@ -20,13 +20,13 @@ type Chirp struct {
 }
 
 func CreateChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
-	token, err := auth.GetBearerToken(r.Header)
+	tok, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		api.RespondWithError(w, http.StatusBadRequest, fmt.Sprintf("Unable to parse auth: %s", err))
+		api.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	validUserID, err := auth.ValidateJWT(token, cfg.JWT)
+	validUserID, err := auth.ValidateJWT(tok, cfg.JWT)
 	if err != nil {
 		api.RespondWithError(w, http.StatusUnauthorized, fmt.Sprintf("Unable to validate token: %s", err))
 		return

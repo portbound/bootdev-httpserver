@@ -172,3 +172,32 @@ func CreateUser(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 	}
 	api.RespondWithJSON(w, http.StatusCreated, "application/json", resp)
 }
+
+func UpdateUser(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
+	type request struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	req := request{}
+	err := json.NewDecoder(r.Body).Decode(&req)
+
+	tok, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		api.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	var newPassword string
+	if req.Password != "" {
+		newPassword, err := auth.HashPassword(req.Password)
+		if err != nil {
+			api.RespondWithError(w, http.StatusBadRequest, err.Error())
+		}
+	}
+
+	params := database.UpdateUserParams{
+		ID:       "",
+		Password: newPassword,
+	}
+}
