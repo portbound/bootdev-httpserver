@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -17,6 +18,21 @@ import (
 
 type Chirp struct {
 	Body string `json:"body"`
+}
+
+func (c *Chirp) validate() error {
+	if utf8.RuneCountInString(c.Body) > 140 {
+		return errors.New("Invalid Chirp Length")
+	}
+	return nil
+}
+
+func (c *Chirp) clean() {
+	s := strings.ToLower(c.Body)
+	s = strings.ReplaceAll(s, "kerfuffle", "****")
+	s = strings.ReplaceAll(s, "sharbert", "****")
+	s = strings.ReplaceAll(s, "fornax", "****")
+	c.Body = s
 }
 
 func CreateChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
@@ -61,7 +77,36 @@ func CreateChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 }
 
 func GetAllChirps(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
-	chirps, err := cfg.DbQueries.GetAllChirps(r.Context())
+	author := r.URL.Query().Get("author_id")
+	sortOrder := r.URL.Query().Get("created_at")
+	var (
+		chirps []database.Chirp
+		err    error
+	)
+
+	if author != "" {
+		author, parseErr := uuid.Parse(author)
+		if parseErr != nil {
+			api.RespondWithError(w, http.StatusBadRequest, parseErr.Error())
+			return
+		}
+		chirps, err = cfg.DbQueries.GetAllChirpsFromUser(r.Context(), author)
+	} else {
+		chirps, err = cfg.DbQueries.GetAllChirps(r.Context())
+	}
+
+	if sortOrder == "asc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.Time.Before(chirps[j].CreatedAt.Time)
+		})
+	}
+
+	if sortOrder == "desc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.Time.After(chirps[j].CreatedAt.Time)
+		})
+	}
+
 	if err != nil {
 		api.RespondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to fetch chirps: %s", err))
 		return
@@ -106,19 +151,4 @@ func DeleteChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config, chirpI
 		api.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-}
-
-func (c *Chirp) validate() error {
-	if utf8.RuneCountInString(c.Body) > 140 {
-		return errors.New("Invalid Chirp Length")
-	}
-	return nil
-}
-
-func (c *Chirp) clean() {
-	s := strings.ToLower(c.Body)
-	s = strings.ReplaceAll(s, "kerfuffle", "****")
-	s = strings.ReplaceAll(s, "sharbert", "****")
-	s = strings.ReplaceAll(s, "fornax", "****")
-	c.Body = s
 }

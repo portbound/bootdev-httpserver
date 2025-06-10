@@ -14,6 +14,7 @@ type Config struct {
 	FileserverHits atomic.Int32
 	DbQueries      *database.Queries
 	JWT            string
+	PolkaKey       string
 }
 
 func NewConfig() (*Config, error) {
@@ -23,7 +24,11 @@ func NewConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Config{DbQueries: database.New(db)}, nil
+
+	return &Config{
+		JWT:       os.Getenv("JWT"),
+		PolkaKey:  os.Getenv("POLKA_KEY"),
+		DbQueries: database.New(db)}, nil
 }
 
 func (cfg *Config) HandlerReadiness(w http.ResponseWriter, r *http.Request) {

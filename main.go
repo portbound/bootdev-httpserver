@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -18,7 +17,6 @@ func main() {
 		return
 	}
 
-	cfg.JWT = os.Getenv("JWT")
 	mux := http.NewServeMux()
 
 	// Admin
@@ -51,16 +49,16 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetAllChirps(w, r, cfg)
 	})
-	mux.HandleFunc("GET /api/chirps/{chirpID}", func(w http.ResponseWriter, r *http.Request) {
-		chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	mux.HandleFunc("GET /api/chirps/{chirp_id}", func(w http.ResponseWriter, r *http.Request) {
+		chirpID, err := uuid.Parse(r.PathValue("chirp_id"))
 		if err != nil {
 			api.RespondWithError(w, http.StatusNotFound, err.Error())
 			return
 		}
 		handlers.GetChirp(w, r, cfg, chirpID)
 	})
-	mux.HandleFunc("DELETE /api/chirps/{chirpID}", func(w http.ResponseWriter, r *http.Request) {
-		chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	mux.HandleFunc("DELETE /api/chirps/{chirp_id}", func(w http.ResponseWriter, r *http.Request) {
+		chirpID, err := uuid.Parse(r.PathValue("chirp_id"))
 		if err != nil {
 			api.RespondWithError(w, http.StatusNotFound, err.Error())
 			return

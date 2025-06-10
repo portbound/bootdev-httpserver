@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/portbound/bootdev-httpserver/api"
+	"github.com/portbound/bootdev-httpserver/internal/auth"
 )
 
 func UpgradeToChirpyRed(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
@@ -14,6 +16,17 @@ func UpgradeToChirpyRed(w http.ResponseWriter, r *http.Request, cfg *api.Config)
 		Data  struct {
 			UserID uuid.UUID `json:"user_id"`
 		} `json:"data"`
+	}
+
+	key, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		api.RespondWithError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	if key != cfg.PolkaKey {
+		api.RespondWithError(w, http.StatusUnauthorized, fmt.Sprintln("Unauthorized"))
+		return
 	}
 
 	h := hook{}
