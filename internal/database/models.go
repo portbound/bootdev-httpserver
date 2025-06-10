@@ -31,6 +31,6 @@ type User struct {
 	ID             uuid.UUID
 	CreatedAt      sql.NullTime
 	UpdatedAt      sql.NullTime
-	Email          sql.NullString
-	HashedPassword sql.NullString
+	Email          string
+	HashedPassword string
 }

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -80,16 +79,13 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		return
 	}
 
-	user, err := cfg.DbQueries.GetUser(r.Context(), sql.NullString{
-		String: req.Email,
-		Valid:  req.Email != "",
-	})
+	user, err := cfg.DbQueries.GetUser(r.Context(), req.Email)
 	if err != nil {
 		api.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Could not find user with email: %s", req.Email))
 		return
 	}
 
-	if err := auth.CheckPasswordHash(user.HashedPassword.String, req.Password); err != nil {
+	if err := auth.CheckPasswordHash(user.HashedPassword, req.Password); err != nil {
 		api.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Invalid password for: %s", req.Email))
 		return
 	}
@@ -115,7 +111,7 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		ID:           user.ID,
 		CreatedAt:    user.CreatedAt.Time,
 		UpdatedAt:    user.UpdatedAt.Time,
-		Email:        user.Email.String,
+		Email:        user.Email,
 		Token:        jwt,
 		RefreshToken: refreshToken.Token,
 	}
@@ -141,21 +137,15 @@ func CreateUser(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		return
 	}
 
-	hash, err := auth.HashPassword(req.Password)
+	hashedPasswd, err := auth.HashPassword(req.Password)
 	if err != nil {
 		api.RespondWithError(w, http.StatusInternalServerError, "failed to set password")
 		return
 	}
 
 	params := database.CreateUserParams{
-		Email: sql.NullString{
-			String: req.Email,
-			Valid:  req.Email != "",
-		},
-		HashedPassword: sql.NullString{
-			String: hash,
-			Valid:  hash != "",
-		},
+		Email:          req.Email,
+		HashedPassword: hashedPasswd,
 	}
 
 	user, err := cfg.DbQueries.CreateUser(r.Context(), params)
@@ -168,7 +158,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt.Time,
 		UpdatedAt: user.UpdatedAt.Time,
-		Email:     user.Email.String,
+		Email:     user.Email,
 	}
 	api.RespondWithJSON(w, http.StatusCreated, "application/json", resp)
 }
@@ -179,25 +169,37 @@ func UpdateUser(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		Password string `json:"password"`
 	}
 
+	params := database.UpdateUserParams{}
 	req := request{}
 	err := json.NewDecoder(r.Body).Decode(&req)
 
 	tok, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		api.RespondWithError(w, http.StatusBadRequest, err.Error())
+		api.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	var newPassword string
+	params.ID, err = auth.ValidateJWT(tok, cfg.JWT)
+	if err != nil {
+		api.RespondWithError(w, http.StatusUnauthorized, err.Error())
+	}
+
 	if req.Password != "" {
-		newPassword, err := auth.HashPassword(req.Password)
+		params.HashedPassword, err = auth.HashPassword(req.Password)
 		if err != nil {
-			api.RespondWithError(w, http.StatusBadRequest, err.Error())
+			api.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 	}
 
-	params := database.UpdateUserParams{
-		ID:       "",
-		Password: newPassword,
+	if req.Email != "" {
+		params.Email = req.Email
 	}
+
+	updatedUser, err := cfg.DbQueries.UpdateUser(r.Context(), params)
+	if err != nil {
+		api.RespondWithError(w, http.StatusInternalServerError, err.Error())
+	}
+
+	api.RespondWithJSON(w, http.StatusOK, "applicaton/json", updatedUser)
+
 }

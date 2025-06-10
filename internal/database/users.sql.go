@@ -7,7 +7,6 @@ package database
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -25,8 +24,8 @@ RETURNING id, created_at, updated_at, email, hashed_password
 `
 
 type CreateUserParams struct {
-	Email          sql.NullString
-	HashedPassword sql.NullString
+	Email          string
+	HashedPassword string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -46,7 +45,7 @@ const getUser = `-- name: GetUser :one
 SELECT id, created_at, updated_at, email, hashed_password FROM users WHERE email = $1
 `
 
-func (q *Queries) GetUser(ctx context.Context, email sql.NullString) (User, error) {
+func (q *Queries) GetUser(ctx context.Context, email string) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUser, email)
 	var i User
 	err := row.Scan(
@@ -68,8 +67,8 @@ RETURNING id, created_at, updated_at, email, hashed_password
 
 type UpdateUserParams struct {
 	ID             uuid.UUID
-	Email          sql.NullString
-	HashedPassword sql.NullString
+	Email          string
+	HashedPassword string
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
