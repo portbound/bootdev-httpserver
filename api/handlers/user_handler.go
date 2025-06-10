@@ -43,7 +43,7 @@ func RefreshAccessToken(w http.ResponseWriter, r *http.Request, cfg *api.Config)
 	resp := response{
 		Token: jwt,
 	}
-	api.RespondWithJSON(w, http.StatusOK, "application/json", resp)
+	api.RespondWithJSON(w, http.StatusOK, resp)
 }
 
 func RevokeRefreshToken(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
@@ -55,7 +55,7 @@ func RevokeRefreshToken(w http.ResponseWriter, r *http.Request, cfg *api.Config)
 	if err := cfg.DbQueries.RevokeRefreshToken(r.Context(), tok); err != nil {
 		api.RespondWithError(w, http.StatusBadRequest, err.Error())
 	}
-	api.RespondWithJSON(w, http.StatusNoContent, "application/json", nil)
+	api.RespondWithJSON(w, http.StatusNoContent, nil)
 }
 
 func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
@@ -71,6 +71,7 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		HashedPassword string    `json:"-"`
 		Token          string    `json:"token"`
 		RefreshToken   string    `json:"refresh_token"`
+		IsChirpyRed    bool      `json:"is_chirpy_red"`
 	}
 
 	req := &request{}
@@ -114,8 +115,9 @@ func Login(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		Email:        user.Email,
 		Token:        jwt,
 		RefreshToken: refreshToken.Token,
+		IsChirpyRed:  user.IsChirpyRed,
 	}
-	api.RespondWithJSON(w, http.StatusOK, "application/json", resp)
+	api.RespondWithJSON(w, http.StatusOK, resp)
 }
 
 func CreateUser(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
@@ -129,6 +131,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		UpdatedAt      time.Time `json:"updated_at"`
 		Email          string    `json:"email"`
 		HashedPassword string    `json:"-"`
+		IsChirpyRed    bool      `json:"is_chirpy_red"`
 	}
 
 	req := &request{}
@@ -155,12 +158,13 @@ func CreateUser(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 	}
 
 	resp := response{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt.Time,
-		UpdatedAt: user.UpdatedAt.Time,
-		Email:     user.Email,
+		ID:          user.ID,
+		CreatedAt:   user.CreatedAt.Time,
+		UpdatedAt:   user.UpdatedAt.Time,
+		Email:       user.Email,
+		IsChirpyRed: user.IsChirpyRed,
 	}
-	api.RespondWithJSON(w, http.StatusCreated, "application/json", resp)
+	api.RespondWithJSON(w, http.StatusCreated, resp)
 }
 
 func UpdateUser(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
@@ -200,6 +204,5 @@ func UpdateUser(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		api.RespondWithError(w, http.StatusInternalServerError, err.Error())
 	}
 
-	api.RespondWithJSON(w, http.StatusOK, "applicaton/json", updatedUser)
-
+	api.RespondWithJSON(w, http.StatusOK, updatedUser)
 }

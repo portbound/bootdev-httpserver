@@ -57,7 +57,7 @@ func CreateChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		return
 	}
 
-	api.RespondWithJSON(w, http.StatusCreated, "application/json", createdChirp)
+	api.RespondWithJSON(w, http.StatusCreated, createdChirp)
 }
 
 func GetAllChirps(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
@@ -66,7 +66,7 @@ func GetAllChirps(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 		api.RespondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to fetch chirps: %s", err))
 		return
 	}
-	api.RespondWithJSON(w, http.StatusOK, "application/json", chirps)
+	api.RespondWithJSON(w, http.StatusOK, chirps)
 }
 
 func GetChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config, chirpID uuid.UUID) {
@@ -75,7 +75,7 @@ func GetChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config, chirpID u
 		api.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Chirp not found: %s", err))
 		return
 	}
-	api.RespondWithJSON(w, http.StatusOK, "application/json", chirp)
+	api.RespondWithJSON(w, http.StatusOK, chirp)
 }
 
 func DeleteChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config, chirpID uuid.UUID) {

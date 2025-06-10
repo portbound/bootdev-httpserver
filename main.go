@@ -19,13 +19,32 @@ func main() {
 	}
 
 	cfg.JWT = os.Getenv("JWT")
-
 	mux := http.NewServeMux()
-	mux.Handle("/app/", http.StripPrefix("/app/", cfg.MiddlewareMetricsInc(http.FileServer(http.Dir(".")))))
-	mux.HandleFunc("GET /admin/metrics", cfg.HandlerMetrics)
+
+	// Admin
 	mux.HandleFunc("POST /admin/reset", cfg.HandlerReset)
 	mux.HandleFunc("GET /api/healthz", cfg.HandlerReadiness)
 
+	// Auth
+	mux.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
+		handlers.Login(w, r, cfg)
+	})
+	mux.HandleFunc("POST /api/refresh", func(w http.ResponseWriter, r *http.Request) {
+		handlers.RefreshAccessToken(w, r, cfg)
+	})
+	mux.HandleFunc("POST /api/revoke", func(w http.ResponseWriter, r *http.Request) {
+		handlers.RevokeRefreshToken(w, r, cfg)
+	})
+
+	// Users
+	mux.HandleFunc("POST /api/users", func(w http.ResponseWriter, r *http.Request) {
+		handlers.CreateUser(w, r, cfg)
+	})
+	mux.HandleFunc("PUT /api/users", func(w http.ResponseWriter, r *http.Request) {
+		handlers.UpdateUser(w, r, cfg)
+	})
+
+	// Chirps
 	mux.HandleFunc("POST /api/chirps", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CreateChirp(w, r, cfg)
 	})
@@ -48,21 +67,12 @@ func main() {
 		}
 		handlers.DeleteChirp(w, r, cfg, chirpID)
 	})
-	mux.HandleFunc("POST /api/users", func(w http.ResponseWriter, r *http.Request) {
-		handlers.CreateUser(w, r, cfg)
+
+	// Hooks
+	mux.HandleFunc("POST /api/polka/webhooks", func(w http.ResponseWriter, r *http.Request) {
+		handlers.UpgradeToChirpyRed(w, r, cfg)
 	})
-	mux.HandleFunc("PUT /api/users", func(w http.ResponseWriter, r *http.Request) {
-		handlers.UpdateUser(w, r, cfg)
-	})
-	mux.HandleFunc("POST /api/login", func(w http.ResponseWriter, r *http.Request) {
-		handlers.Login(w, r, cfg)
-	})
-	mux.HandleFunc("POST /api/refresh", func(w http.ResponseWriter, r *http.Request) {
-		handlers.RefreshAccessToken(w, r, cfg)
-	})
-	mux.HandleFunc("POST /api/revoke", func(w http.ResponseWriter, r *http.Request) {
-		handlers.RevokeRefreshToken(w, r, cfg)
-	})
+
 	server := &http.Server{Addr: ":8080", Handler: mux}
 	server.ListenAndServe()
 }

@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 	"os"
 	"sync/atomic"
@@ -27,31 +26,10 @@ func NewConfig() (*Config, error) {
 	return &Config{DbQueries: database.New(db)}, nil
 }
 
-func (cfg *Config) MiddlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.FileserverHits.Add(1)
-		next.ServeHTTP(w, r)
-	})
-}
-
 func (cfg *Config) HandlerReadiness(w http.ResponseWriter, r *http.Request) {
-	RespondWithJSON(w, http.StatusOK, "text/plain; charset=utf-8", "OK")
-}
-
-func (cfg *Config) HandlerMetrics(w http.ResponseWriter, r *http.Request) {
-	msg := fmt.Sprintf(
-		`<html>
-			<body>
-				<h1>Welcome, Chirpy Admin</h1>
-				<p>Chirpy has been visited %d times!</p>
-			</body>
-		</html>
-		`, cfg.FileserverHits.Load())
-
-	RespondWithJSON(w, http.StatusOK, "text/html; charset=utf-8", msg)
+	RespondWithJSON(w, http.StatusOK, "OK")
 }
 
 func (cfg *Config) HandlerReset(w http.ResponseWriter, r *http.Request) {
-	cfg.FileserverHits.Store(0)
-	RespondWithJSON(w, http.StatusOK, "text/plain; charset=utf-8", "Hits reset to 0")
+	// TODO: reset all tables?
 }
