@@ -33,11 +33,20 @@ func main() {
 		handlers.GetAllChirps(w, r, cfg)
 	})
 	mux.HandleFunc("GET /api/chirps/{chirpID}", func(w http.ResponseWriter, r *http.Request) {
-		chirpId, err := uuid.Parse(r.PathValue("chirpID"))
+		chirpID, err := uuid.Parse(r.PathValue("chirpID"))
 		if err != nil {
+			api.RespondWithError(w, http.StatusNotFound, err.Error())
 			return
 		}
-		handlers.GetChirp(w, r, cfg, chirpId)
+		handlers.GetChirp(w, r, cfg, chirpID)
+	})
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", func(w http.ResponseWriter, r *http.Request) {
+		chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+		if err != nil {
+			api.RespondWithError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		handlers.DeleteChirp(w, r, cfg, chirpID)
 	})
 	mux.HandleFunc("POST /api/users", func(w http.ResponseWriter, r *http.Request) {
 		handlers.CreateUser(w, r, cfg)

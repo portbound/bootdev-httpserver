@@ -69,12 +69,43 @@ func GetAllChirps(w http.ResponseWriter, r *http.Request, cfg *api.Config) {
 	api.RespondWithJSON(w, http.StatusOK, "application/json", chirps)
 }
 
-func GetChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config, id uuid.UUID) {
-	chirp, err := cfg.DbQueries.GetChirp(r.Context(), id)
+func GetChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config, chirpID uuid.UUID) {
+	chirp, err := cfg.DbQueries.GetChirp(r.Context(), chirpID)
 	if err != nil {
 		api.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Chirp not found: %s", err))
+		return
 	}
 	api.RespondWithJSON(w, http.StatusOK, "application/json", chirp)
+}
+
+func DeleteChirp(w http.ResponseWriter, r *http.Request, cfg *api.Config, chirpID uuid.UUID) {
+	tok, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		api.RespondWithError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	userID, err := auth.ValidateJWT(tok, cfg.JWT)
+	if err != nil {
+		api.RespondWithError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	chirp, err := cfg.DbQueries.GetChirp(r.Context(), chirpID)
+	if err != nil {
+		api.RespondWithError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	if chirp.UserID != userID {
+		api.RespondWithError(w, http.StatusForbidden, fmt.Sprint("Unauthorized. User does not own chirp"))
+		return
+	}
+
+	if err := cfg.DbQueries.DeleteChirp(r.Context(), chirpID); err != nil {
+		api.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 }
 
 func (c *Chirp) validate() error {
